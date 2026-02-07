@@ -1,0 +1,77 @@
+name: Integration Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      zabbix_version:
+        description: "Zabbix version tag (e.g. 7.0-latest, 6.0-latest)"
+        required: false
+        default: "7.0-latest"
+  schedule:
+    # Weekly on Sunday at 03:00 UTC
+    - cron: "0 3 * * 0"
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - zabbix_version: "7.0-latest"
+            agent2_version: "7.0-ubuntu-latest"
+          # 6.0 LTS only on scheduled runs
+          - zabbix_version: "6.0-latest"
+            agent2_version: "6.0-ubuntu-latest"
+            schedule_only: true
+
+    steps:
+      - name: Skip 6.0 on non-scheduled runs
+        if: matrix.schedule_only && github.event_name != 'schedule'
+        run: echo "Skipping Zabbix 6.0 on non-scheduled run" && exit 0
+
+      - name: Checkout
+        if: "!(matrix.schedule_only && github.event_name != 'schedule')"
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        if: "!(matrix.schedule_only && github.event_name != 'schedule')"
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.7"
+
+      - name: Install zabbix_sender
+        if: "!(matrix.schedule_only && github.event_name != 'schedule')"
+        run: |
+          # Install zabbix-sender from the official Zabbix repo
+          wget -q https://repo.zabbix.com/zabbix/7.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_7.0+ubuntu24.04_all.deb
+          sudo dpkg -i zabbix-release_latest_7.0+ubuntu24.04_all.deb
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq zabbix-sender
+
+      - name: Build ztc
+        if: "!(matrix.schedule_only && github.event_name != 'schedule')"
+        run: CGO_ENABLED=0 go build -o ztc .
+
+      - name: Override version from dispatch input
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.zabbix_version != ''
+        run: |
+          echo "ZABBIX_VERSION=${{ github.event.inputs.zabbix_version }}" >> "$GITHUB_ENV"
+          echo "ZABBIX_AGENT2_VERSION=${{ github.event.inputs.zabbix_version }}-ubuntu" >> "$GITHUB_ENV"
+
+      - name: Run integration tests
+        if: "!(matrix.schedule_only && github.event_name != 'schedule')"
+        env:
+          ZABBIX_VERSION: ${{ matrix.zabbix_version }}
+          ZABBIX_AGENT2_VERSION: ${{ matrix.agent2_version }}
+          VULNERS_API_KEY: ${{ secrets.VULNERS_API_KEY }}
+          SKIP_BUILD: "true"
+          ZTC_BINARY: ./ztc
+        run: bash integration/scripts/run-tests.sh
+
+      - name: Show Docker logs on failure
+        if: failure()
+        run: cd integration && docker compose logs --tail=100

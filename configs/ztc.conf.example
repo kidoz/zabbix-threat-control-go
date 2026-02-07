@@ -1,0 +1,56 @@
+# Zabbix Threat Control Configuration (INI format for backward compatibility)
+# Copy this file to /etc/ztc.conf or use --config flag
+
+[Zabbix]
+# Zabbix frontend URL (default: http://localhost)
+FrontURL = http://localhost
+
+# Zabbix API credentials (required)
+ApiUser = Admin
+ApiPassword = zabbix
+
+# Zabbix server FQDN for zabbix_sender (default: localhost)
+ServerFQDN = localhost
+
+# Zabbix server port for zabbix_sender (default: 10051)
+ServerPort = 10051
+
+# Path to zabbix_sender binary (default: zabbix_sender)
+SenderPath = zabbix_sender
+
+# Path to zabbix_get binary (default: zabbix_get)
+GetPath = zabbix_get
+
+# Verify SSL certificates for Zabbix API (default: true)
+VerifySSL = true
+
+[Vulners]
+# Your Vulners API key (required, get it from https://vulners.com/userinfo)
+ApiKey = YOUR_VULNERS_API_KEY
+
+# Vulners API host (default: https://vulners.com)
+Host = https://vulners.com
+
+# Vulners API rate limit in requests per second (default: 10)
+RateLimit = 10
+
+[Scan]
+# Minimum CVSS score to report (default: 1)
+MinCVSS = 1
+
+# Template name for OS data collection (default: OS-Report)
+OSReportTemplate = OS-Report
+
+# HTTP timeout in seconds (default: 30)
+Timeout = 30
+
+# Number of concurrent workers (default: 4)
+Workers = 4
+
+[Telemetry]
+# Enable OpenTelemetry tracing (default: false)
+Enabled = false
+
+# OTLP HTTP endpoint for trace export (e.g. http://localhost:4318)
+# When empty with telemetry enabled, uses stdout exporter in verbose mode
+OtlpEndpoint = ""

@@ -1,0 +1,90 @@
+# Zabbix stack for ZTC integration testing.
+# Usage:
+#   docker compose up -d
+#   # or with specific version:
+#   ZABBIX_VERSION=6.0-latest docker compose up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: zabbix
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: zabbix
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    networks:
+      - ztc-test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zabbix"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  zabbix-server:
+    image: zabbix/zabbix-server-pgsql:${ZABBIX_VERSION:-7.0-latest}
+    environment:
+      DB_SERVER_HOST: postgres
+      POSTGRES_DB: zabbix
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: zabbix
+      ZBX_STARTTRAPPERS: "5"
+    ports:
+      - "10051:10051"
+    networks:
+      - ztc-test
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "zabbix_server", "-R", "diaginfo"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  zabbix-web:
+    image: zabbix/zabbix-web-nginx-pgsql:${ZABBIX_VERSION:-7.0-latest}
+    environment:
+      DB_SERVER_HOST: postgres
+      POSTGRES_DB: zabbix
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: zabbix
+      ZBX_SERVER_HOST: zabbix-server
+      PHP_TZ: UTC
+    ports:
+      - "8080:8080"
+    networks:
+      - ztc-test
+    depends_on:
+      zabbix-server:
+        condition: service_healthy
+    healthcheck:
+      test: >-
+        curl -sf -X POST http://localhost:8080/api_jsonrpc.php
+        -H 'Content-Type: application/json'
+        -d '{"jsonrpc":"2.0","method":"apiinfo.version","params":{},"id":1}'
+        | grep -q '"result"'
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+
+  zabbix-agent2:
+    image: zabbix/zabbix-agent2:${ZABBIX_AGENT2_VERSION:-7.0-ubuntu-latest}
+    environment:
+      ZBX_HOSTNAME: integration-test-host
+      ZBX_SERVER_HOST: zabbix-server
+      ZBX_ACTIVESERVERS: zabbix-server
+    networks:
+      - ztc-test
+    depends_on:
+      zabbix-server:
+        condition: service_healthy
+
+volumes:
+  pg-data:
+
+networks:
+  ztc-test:
+    driver: bridge

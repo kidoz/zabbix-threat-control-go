@@ -1,0 +1,15 @@
+# Build artifacts
+/ztc
+/ztc-plugin
+/dist/
+/build/
+
+# Packages
+*.deb
+*.rpm
+*.tar.gz
+*.build
+*.buildinfo
+*.changes
+
+tmp/

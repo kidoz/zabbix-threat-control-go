@@ -1,0 +1,17 @@
+[Unit]
+Description=Zabbix Threat Control vulnerability scan
+Documentation=https://github.com/kidoz/zabbix-threat-control-go
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# The zabbix user/group is created by the zabbix-agent or zabbix-agent2
+# package. Ensure one of them is installed; systemd will refuse to start
+# this unit if the user does not exist.
+User=zabbix
+Group=zabbix
+ExecStart=/usr/bin/ztc scan
+TimeoutStartSec=3600
+Nice=19
+IOSchedulingClass=idle

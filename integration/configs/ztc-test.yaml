@@ -1,0 +1,20 @@
+# ZTC integration test config.
+# Points to the Docker Compose Zabbix stack on localhost.
+# Vulners API key is injected via ZTC_VULNERS_API_KEY env var.
+
+zabbix:
+  front_url: http://localhost:8080
+  api_user: Admin
+  api_password: zabbix
+  server_fqdn: localhost
+  server_port: 10051
+  sender_path: zabbix_sender
+  verify_ssl: false
+
+vulners:
+  api_key: ""
+
+scan:
+  lld_delay: 10
+  workers: 2
+  timeout: 30

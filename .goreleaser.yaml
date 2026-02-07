@@ -1,0 +1,167 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: ztc
+    main: .
+    binary: ztc
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X github.com/kidoz/zabbix-threat-control-go/cmd.Version={{.Version}}
+      - -X github.com/kidoz/zabbix-threat-control-go/cmd.BuildTime={{.Date}}
+      - -X github.com/kidoz/zabbix-threat-control-go/cmd.GitCommit={{.Commit}}
+
+  - id: ztc-plugin
+    main: ./cmd/ztc-plugin
+    binary: ztc-plugin
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/kidoz/zabbix-threat-control-go/cmd.Version={{.Version}}
+      - -X github.com/kidoz/zabbix-threat-control-go/cmd.BuildTime={{.Date}}
+      - -X github.com/kidoz/zabbix-threat-control-go/cmd.GitCommit={{.Commit}}
+
+archives:
+  - id: ztc-archive
+    builds:
+      - ztc
+    format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - configs/ztc.yaml.example
+    name_template: "ztc_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+  - id: ztc-plugin-archive
+    builds:
+      - ztc-plugin
+    format: tar.gz
+    files:
+      - configs/ztc.yaml.example
+    name_template: "ztc-plugin_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+nfpms:
+  - id: ztc-nfpm
+    package_name: zabbix-threat-control-main
+    builds:
+      - ztc
+      - ztc-plugin
+    vendor: Vulners
+    homepage: https://github.com/kidoz/zabbix-threat-control-go
+    maintainer: Vulners <support@vulners.com>
+    description: >-
+      Zabbix Threat Control - vulnerability management for Zabbix.
+      Go successor to the Python zabbix-threat-control-main package.
+      Run 'ztc prepare --force' after upgrading from the Python version.
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    dependencies:
+      - zabbix-sender
+    recommends:
+      - zabbix-get
+
+    # Satisfies any Requires/Depends on the old Python package name
+    provides:
+      - zabbix-threat-control-main
+
+    # DEB-specific: Breaks is preferred over Conflicts per Debian policy
+    deb:
+      breaks:
+        - zabbix-threat-control-main (<< {{ .Version }})
+
+    overrides:
+      rpm:
+        # Obsoletes: auto-erases the old Python package on install
+        replaces:
+          - zabbix-threat-control-main < {{ .Version }}
+        # Prevents reinstalling the old Python version alongside
+        conflicts:
+          - zabbix-threat-control-main < {{ .Version }}
+      deb:
+        # Replaces: allows dpkg to take over files from the old package
+        replaces:
+          - zabbix-threat-control-main (<< {{ .Version }})
+
+    bindir: /usr/bin
+    contents:
+      # YAML config example — noreplace preserves user edits on upgrade
+      - src: configs/ztc.yaml.example
+        dst: /etc/ztc.yaml.example
+        type: "config|noreplace"
+
+      # Symlink ztc into the legacy Python project directory
+      - dst: /opt/monitoring/zabbix-threat-control/ztc
+        src: /usr/bin/ztc
+        type: symlink
+
+      # Compatibility shim for Python scan.py invocation
+      - src: packaging/scripts/scan.py
+        dst: /opt/monitoring/zabbix-threat-control/scan.py
+        file_info:
+          mode: 0755
+
+      # Compatibility shim for Python prepare.py -uvtd invocation
+      - src: packaging/scripts/prepare.py
+        dst: /opt/monitoring/zabbix-threat-control/prepare.py
+        file_info:
+          mode: 0755
+
+      # Legacy fix.py stub — refuses execution with clear error message.
+      # The Python fix.py derived targets from trigger/event context;
+      # the Go version does not implement that flow.
+      - src: packaging/scripts/fix.py
+        dst: /opt/monitoring/zabbix-threat-control/fix.py
+        file_info:
+          mode: 0755
+
+      # Direct fix helper (requires real hostname, not Zabbix macro)
+      - src: packaging/scripts/fix.sh
+        dst: /opt/monitoring/zabbix-threat-control/fix.sh
+        file_info:
+          mode: 0755
+
+      # systemd units for scheduled scanning
+      - src: packaging/systemd/ztc-scan.service
+        dst: /lib/systemd/system/ztc-scan.service
+      - src: packaging/systemd/ztc-scan.timer
+        dst: /lib/systemd/system/ztc-scan.timer
+
+    scripts:
+      postinstall: packaging/scripts/postinstall.sh
+      preremove: packaging/scripts/preremove.sh
+      postremove: packaging/scripts/postremove.sh
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"

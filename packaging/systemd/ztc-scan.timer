@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Zabbix Threat Control scan daily
+Documentation=https://github.com/kidoz/zabbix-threat-control-go
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=3600
+Persistent=true
+
+[Install]
+WantedBy=timers.target
