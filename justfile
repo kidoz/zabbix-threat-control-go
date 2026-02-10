@@ -103,24 +103,15 @@ run *args:
 run-plugin *args:
     go run ./cmd/ztc-plugin/ {{args}}
 
-# Install tools (golangci-lint, gofumpt, wire, govulncheck)
+# Install tools (golangci-lint, gofumpt, govulncheck)
 tools:
     go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
     go install mvdan.cc/gofumpt@latest
-    go install github.com/google/wire/cmd/wire@latest
     go install golang.org/x/vuln/cmd/govulncheck@latest
 
 # Scan dependencies for known vulnerabilities
 vulncheck:
     govulncheck ./...
-
-# Generate Wire injectors
-wire:
-    wire ./cmd/
-
-# Verify wire_gen.go is up to date
-wire-check:
-    wire diff ./cmd/
 
 # Show module dependency graph
 deps:

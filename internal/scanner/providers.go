@@ -5,24 +5,26 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/wire"
 	vulners "github.com/kidoz/go-vulners"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.uber.org/fx"
 	"go.uber.org/zap"
 
 	"github.com/kidoz/zabbix-threat-control-go/internal/config"
 	"github.com/kidoz/zabbix-threat-control-go/internal/zabbix"
 )
 
-// ProviderSet provides all scanner dependencies for Wire injection.
-var ProviderSet = wire.NewSet(
-	ProvideScanner,
-	NewHostMatrix,
-	NewAggregator,
-	ProvideNamingConfig,
-	NewLLDGenerator,
-	ProvideVulnersClient,
-	zabbix.ProviderSet,
+// Module provides all scanner dependencies for fx injection.
+var Module = fx.Module("scanner",
+	fx.Provide(
+		ProvideScanner,
+		NewHostMatrix,
+		NewAggregator,
+		ProvideNamingConfig,
+		NewLLDGenerator,
+		ProvideVulnersClient,
+	),
+	zabbix.Module,
 )
 
 // ProvideNamingConfig extracts the NamingConfig from Config for NewLLDGenerator.
@@ -49,7 +51,7 @@ func ProvideVulnersClient(cfg *config.Config) (*vulners.Client, error) {
 	return client, nil
 }
 
-// ProvideScanner assembles a Scanner from its Wire-injected dependencies.
+// ProvideScanner assembles a Scanner from its injected dependencies.
 func ProvideScanner(
 	cfg *config.Config,
 	log *zap.Logger,

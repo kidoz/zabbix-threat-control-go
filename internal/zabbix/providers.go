@@ -1,6 +1,8 @@
 package zabbix
 
-import "github.com/google/wire"
+import "go.uber.org/fx"
 
-// ProviderSet provides Zabbix client and sender for Wire injection.
-var ProviderSet = wire.NewSet(NewClient, NewSender)
+// Module provides Zabbix client and sender for fx injection.
+var Module = fx.Module("zabbix",
+	fx.Provide(NewClient, NewSender),
+)

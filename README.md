@@ -117,7 +117,7 @@ CLI (ztc)
 Requires Go 1.25+. A [justfile](https://github.com/casey/just) is provided for common tasks:
 
 ```bash
-# Install dev tools (golangci-lint, gofumpt, wire, govulncheck)
+# Install dev tools (golangci-lint, gofumpt, govulncheck)
 just tools
 
 # Build both binaries
@@ -135,23 +135,8 @@ just check
 # Scan dependencies for known vulnerabilities
 just vulncheck
 
-# Regenerate Wire dependency injection code
-just wire
-
-# Verify generated Wire code is up to date
-just wire-check
-
 # Format code
 just fmt
-```
-
-### Dependency injection
-
-CLI command wiring uses [Google Wire](https://github.com/google/wire) for compile-time dependency injection. The generated file `cmd/wire_gen.go` is committed to the repo so builds don't require the `wire` tool. If you change provider signatures or add dependencies:
-
-```bash
-just wire          # regenerate cmd/wire_gen.go
-just wire-check    # verify it matches (CI runs this)
 ```
 
 ### Manual commands
