@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"go.uber.org/zap"
+	"log/slog"
 
 	"github.com/kidoz/zabbix-threat-control-go/internal/config"
 )
@@ -17,7 +17,7 @@ import (
 // Sender wraps zabbix_sender for sending data to Zabbix
 type Sender struct {
 	cfg *config.Config
-	log *zap.Logger
+	log *slog.Logger
 }
 
 // SenderData represents data to be sent to Zabbix
@@ -28,7 +28,7 @@ type SenderData struct {
 }
 
 // NewSender creates a new Zabbix sender
-func NewSender(cfg *config.Config, log *zap.Logger) *Sender {
+func NewSender(cfg *config.Config, log *slog.Logger) *Sender {
 	return &Sender{
 		cfg: cfg,
 		log: log,
@@ -52,7 +52,7 @@ func (s *Sender) Send(data []SenderData) error {
 
 	input := strings.Join(lines, "\n")
 
-	s.log.Debug("Sending data to Zabbix", zap.Int("items", len(data)))
+	s.log.Debug("Sending data to Zabbix", slog.Int("items", len(data)))
 
 	// Execute zabbix_sender with a timeout to prevent hanging
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -72,7 +72,7 @@ func (s *Sender) Send(data []SenderData) error {
 		return fmt.Errorf("zabbix_sender failed: %w: %s", err, string(output))
 	}
 
-	s.log.Debug("zabbix_sender completed", zap.String("output", string(output)))
+	s.log.Debug("zabbix_sender completed", slog.String("output", string(output)))
 	return nil
 }
 

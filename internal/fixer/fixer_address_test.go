@@ -3,14 +3,15 @@ package fixer
 import (
 	"testing"
 
-	"go.uber.org/zap"
+	"io"
+	"log/slog"
 
 	"github.com/kidoz/zabbix-threat-control-go/internal/config"
 	"github.com/kidoz/zabbix-threat-control-go/internal/zabbix"
 )
 
 func TestGetHostAddress_MainAgentIP(t *testing.T) {
-	f := &Fixer{log: zap.NewNop(), cfg: config.DefaultConfig()}
+	f := &Fixer{log: slog.New(slog.NewTextHandler(io.Discard, nil)), cfg: config.DefaultConfig()}
 	host := &zabbix.Host{
 		Interfaces: []zabbix.HostInterface{
 			{Type: "1", Main: "1", UseIP: "1", IP: "10.0.0.1", DNS: "web01.example.com", Port: "10050"},
@@ -26,7 +27,7 @@ func TestGetHostAddress_MainAgentIP(t *testing.T) {
 }
 
 func TestGetHostAddress_MainAgentDNS(t *testing.T) {
-	f := &Fixer{log: zap.NewNop(), cfg: config.DefaultConfig()}
+	f := &Fixer{log: slog.New(slog.NewTextHandler(io.Discard, nil)), cfg: config.DefaultConfig()}
 	host := &zabbix.Host{
 		Interfaces: []zabbix.HostInterface{
 			{Type: "1", Main: "1", UseIP: "0", IP: "", DNS: "web01.example.com", Port: "10050"},
@@ -42,7 +43,7 @@ func TestGetHostAddress_MainAgentDNS(t *testing.T) {
 }
 
 func TestGetHostAddress_FallbackToMainNonAgent(t *testing.T) {
-	f := &Fixer{log: zap.NewNop(), cfg: config.DefaultConfig()}
+	f := &Fixer{log: slog.New(slog.NewTextHandler(io.Discard, nil)), cfg: config.DefaultConfig()}
 	// Type "2" = SNMP, but main=1 → should be the fallback
 	host := &zabbix.Host{
 		Interfaces: []zabbix.HostInterface{
@@ -59,7 +60,7 @@ func TestGetHostAddress_FallbackToMainNonAgent(t *testing.T) {
 }
 
 func TestGetHostAddress_FallbackToAnyInterface(t *testing.T) {
-	f := &Fixer{log: zap.NewNop(), cfg: config.DefaultConfig()}
+	f := &Fixer{log: slog.New(slog.NewTextHandler(io.Discard, nil)), cfg: config.DefaultConfig()}
 	host := &zabbix.Host{
 		Interfaces: []zabbix.HostInterface{
 			{Type: "2", Main: "0", UseIP: "1", IP: "10.0.0.3", Port: "161"},
@@ -72,7 +73,7 @@ func TestGetHostAddress_FallbackToAnyInterface(t *testing.T) {
 }
 
 func TestGetHostAddress_PreferAgentOverSNMP(t *testing.T) {
-	f := &Fixer{log: zap.NewNop(), cfg: config.DefaultConfig()}
+	f := &Fixer{log: slog.New(slog.NewTextHandler(io.Discard, nil)), cfg: config.DefaultConfig()}
 	host := &zabbix.Host{
 		Interfaces: []zabbix.HostInterface{
 			{Type: "2", Main: "1", UseIP: "1", IP: "10.0.0.2", Port: "161"},
@@ -89,7 +90,7 @@ func TestGetHostAddress_PreferAgentOverSNMP(t *testing.T) {
 }
 
 func TestGetHostAddress_NoInterfaces(t *testing.T) {
-	f := &Fixer{log: zap.NewNop(), cfg: config.DefaultConfig()}
+	f := &Fixer{log: slog.New(slog.NewTextHandler(io.Discard, nil)), cfg: config.DefaultConfig()}
 	host := &zabbix.Host{}
 	addr, port := f.getHostAddress(host)
 	if addr != "" {
@@ -101,7 +102,7 @@ func TestGetHostAddress_NoInterfaces(t *testing.T) {
 }
 
 func TestGetHostAddress_DNSFallbackLastResort(t *testing.T) {
-	f := &Fixer{log: zap.NewNop(), cfg: config.DefaultConfig()}
+	f := &Fixer{log: slog.New(slog.NewTextHandler(io.Discard, nil)), cfg: config.DefaultConfig()}
 	host := &zabbix.Host{
 		Interfaces: []zabbix.HostInterface{
 			{Type: "2", Main: "0", UseIP: "0", IP: "", DNS: "fallback.local", Port: "161"},

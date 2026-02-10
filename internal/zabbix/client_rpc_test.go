@@ -7,7 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"go.uber.org/zap"
+	"io"
+	"log/slog"
 
 	"github.com/kidoz/zabbix-threat-control-go/internal/config"
 )
@@ -48,7 +49,7 @@ func newTestClient(t *testing.T, ts *httptest.Server) *Client {
 	cfg.Zabbix.FrontURL = ts.URL
 	return &Client{
 		cfg:        cfg,
-		log:        zap.NewNop(),
+		log:        slog.New(slog.NewTextHandler(io.Discard, nil)),
 		httpClient: ts.Client(),
 		authToken:  "test-token",
 		apiVersion: "7.0.0",
@@ -75,7 +76,7 @@ func TestNewClient_AuthenticatesAndFetchesVersion(t *testing.T) {
 	cfg.Zabbix.APIUser = "Admin"
 	cfg.Zabbix.APIPassword = "zabbix"
 
-	c, err := NewClient(cfg, zap.NewNop())
+	c, err := NewClient(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}
@@ -107,7 +108,7 @@ func TestNewClient_AuthFailure(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Zabbix.FrontURL = ts.URL
 
-	_, err := NewClient(cfg, zap.NewNop())
+	_, err := NewClient(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err == nil {
 		t.Fatal("expected error for bad credentials")
 	}

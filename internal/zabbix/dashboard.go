@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"go.uber.org/zap"
+	"log/slog"
 )
 
 // EnsureVirtualHosts creates virtual hosts for aggregated vulnerability data
@@ -71,7 +71,7 @@ func (c *Client) ensureVirtualHost(ctx context.Context, host, name, groupID, tem
 
 	if len(hosts) > 0 {
 		if force {
-			c.log.Info("Force-updating virtual host", zap.String("host", host))
+			c.log.Info("Force-updating virtual host", slog.String("host", host))
 			updateParams := map[string]interface{}{
 				"hostid": hosts[0].HostID,
 				"templates": []map[string]string{
@@ -87,7 +87,7 @@ func (c *Client) ensureVirtualHost(ctx context.Context, host, name, groupID, tem
 			}
 			return nil
 		}
-		c.log.Debug("Virtual host already exists", zap.String("host", host))
+		c.log.Debug("Virtual host already exists", slog.String("host", host))
 		return nil
 	}
 
@@ -121,7 +121,7 @@ func (c *Client) ensureVirtualHost(ctx context.Context, host, name, groupID, tem
 		return fmt.Errorf("failed to create host: %w", err)
 	}
 
-	c.log.Info("Created virtual host", zap.String("host", host))
+	c.log.Info("Created virtual host", slog.String("host", host))
 	return nil
 }
 
@@ -204,11 +204,11 @@ func (c *Client) ensureVulnersTemplate(ctx context.Context, groupID string, forc
 			c.log.Info("Force mode: recreating Vulners template items")
 			// Delete all discovery rules (cascades to item/trigger prototypes)
 			if err := c.deleteTemplateDiscoveryRules(ctx, templateID); err != nil {
-				c.log.Warn("Failed to delete discovery rules", zap.Error(err))
+				c.log.Warn("Failed to delete discovery rules", slog.Any("error", err))
 			}
 			// Delete all plain items
 			if err := c.deleteTemplateItems(ctx, templateID); err != nil {
-				c.log.Warn("Failed to delete template items", zap.Error(err))
+				c.log.Warn("Failed to delete template items", slog.Any("error", err))
 			}
 			// Recreate everything
 			if err := c.createVulnersTemplateItems(ctx, templateID); err != nil {
@@ -223,7 +223,7 @@ func (c *Client) ensureVulnersTemplate(ctx context.Context, groupID string, forc
 	if c.getAPIVersionFloat() >= 6.2 {
 		tgID, err := c.ensureTemplateGroup(ctx, c.cfg.Naming.GroupName)
 		if err != nil {
-			c.log.Warn("Failed to create template group, falling back to host group", zap.Error(err))
+			c.log.Warn("Failed to create template group, falling back to host group", slog.Any("error", err))
 		} else {
 			templateGroupID = tgID
 		}
@@ -298,7 +298,7 @@ func (c *Client) deleteTemplateDiscoveryRules(ctx context.Context, templateID st
 		if err != nil {
 			return fmt.Errorf("failed to delete discovery rules: %w", err)
 		}
-		c.log.Debug("Deleted discovery rules", zap.Int("count", len(ids)))
+		c.log.Debug("Deleted discovery rules", slog.Int("count", len(ids)))
 	}
 	return nil
 }
@@ -332,7 +332,7 @@ func (c *Client) deleteTemplateItems(ctx context.Context, templateID string) err
 	if err != nil {
 		return fmt.Errorf("failed to delete items: %w", err)
 	}
-	c.log.Debug("Deleted template items", zap.Int("count", len(ids)))
+	c.log.Debug("Deleted template items", slog.Int("count", len(ids)))
 	return nil
 }
 
@@ -372,7 +372,7 @@ func (c *Client) createVulnersTemplateItems(ctx context.Context, templateID stri
 		result, err := c.callWithContext(ctx, "discoveryrule.create", rule)
 		if err != nil {
 			// Rule may already exist — fetch its ID
-			c.log.Debug("LLD rule create failed, fetching existing", zap.Any("rule", rule["name"]))
+			c.log.Debug("LLD rule create failed, fetching existing", slog.Any("rule", rule["name"]))
 			getParams := map[string]interface{}{
 				"output":  []string{"itemid"},
 				"hostids": templateID,
@@ -429,7 +429,7 @@ func (c *Client) createVulnersTemplateItems(ctx context.Context, templateID stri
 		}
 		_, err := c.callWithContext(ctx, "itemprototype.create", protoParams)
 		if err != nil {
-			c.log.Warn("Failed to create item prototype (may already exist)", zap.String("prototype", proto.key))
+			c.log.Warn("Failed to create item prototype (may already exist)", slog.String("prototype", proto.key))
 		}
 	}
 
@@ -473,13 +473,13 @@ func (c *Client) createVulnersTemplateItems(ctx context.Context, templateID stri
 	for _, item := range statItems {
 		_, err := c.callWithContext(ctx, "item.create", item)
 		if err != nil {
-			c.log.Warn("Failed to create item (may already exist)", zap.Any("item", item["name"]))
+			c.log.Warn("Failed to create item (may already exist)", slog.Any("item", item["name"]))
 		}
 	}
 
 	// Create trigger prototypes for alerting
 	if err := c.createTriggerPrototypes(ctx, lldRuleIDs); err != nil {
-		c.log.Warn("Failed to create some trigger prototypes", zap.Error(err))
+		c.log.Warn("Failed to create some trigger prototypes", slog.Any("error", err))
 	}
 
 	return nil
@@ -566,7 +566,7 @@ func (c *Client) createTriggerPrototypes(ctx context.Context, lldRuleIDs map[str
 		}
 		_, err := c.callWithContext(ctx, "triggerprototype.create", params)
 		if err != nil {
-			c.log.Warn("Failed to create trigger prototype (may already exist)", zap.String("trigger", trig.description))
+			c.log.Warn("Failed to create trigger prototype (may already exist)", slog.String("trigger", trig.description))
 		}
 	}
 
@@ -585,7 +585,7 @@ func (c *Client) EnsureDashboardCtx(ctx context.Context, force bool) error {
 	// Create statistics graphs (requires statistics host items to exist)
 	medianGraphID, scoreGraphID, err := c.createStatisticsGraphs(ctx)
 	if err != nil {
-		c.log.Warn("Failed to create statistics graphs", zap.Error(err))
+		c.log.Warn("Failed to create statistics graphs", slog.Any("error", err))
 	}
 
 	dashboardName := c.cfg.Naming.DashboardName
@@ -770,7 +770,7 @@ func (c *Client) createStatisticsGraphs(ctx context.Context) (string, string, er
 		result, err := c.callWithContext(ctx, "graph.get", params)
 		if err == nil {
 			if graphs, ok := result.([]interface{}); ok && len(graphs) > 0 {
-				c.log.Debug("Graph already exists", zap.String("graph", name))
+				c.log.Debug("Graph already exists", slog.String("graph", name))
 			}
 		}
 	}
@@ -793,7 +793,7 @@ func (c *Client) createStatisticsGraphs(ctx context.Context) (string, string, er
 		}
 		result, err := c.callWithContext(ctx, "graph.create", params)
 		if err != nil {
-			c.log.Warn("Failed to create median CVSS graph (may already exist)", zap.Error(err))
+			c.log.Warn("Failed to create median CVSS graph (may already exist)", slog.Any("error", err))
 		} else if resultMap, ok := result.(map[string]interface{}); ok {
 			if ids, ok := resultMap["graphids"].([]interface{}); ok && len(ids) > 0 {
 				if id, ok := ids[0].(string); ok {
@@ -833,7 +833,7 @@ func (c *Client) createStatisticsGraphs(ctx context.Context) (string, string, er
 		}
 		result, err := c.callWithContext(ctx, "graph.create", params)
 		if err != nil {
-			c.log.Warn("Failed to create score ratio graph (may already exist)", zap.Error(err))
+			c.log.Warn("Failed to create score ratio graph (may already exist)", slog.Any("error", err))
 		} else if resultMap, ok := result.(map[string]interface{}); ok {
 			if ids, ok := resultMap["graphids"].([]interface{}); ok && len(ids) > 0 {
 				if id, ok := ids[0].(string); ok {

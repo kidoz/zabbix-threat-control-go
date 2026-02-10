@@ -13,8 +13,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"log/slog"
+
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.uber.org/zap"
 
 	"github.com/kidoz/zabbix-threat-control-go/internal/config"
 )
@@ -22,7 +23,7 @@ import (
 // Client is a Zabbix API client
 type Client struct {
 	cfg        *config.Config
-	log        *zap.Logger
+	log        *slog.Logger
 	httpClient *http.Client
 	authToken  string
 	apiVersion string
@@ -30,7 +31,7 @@ type Client struct {
 }
 
 // NewClient creates a new Zabbix API client
-func NewClient(cfg *config.Config, log *zap.Logger) (*Client, error) {
+func NewClient(cfg *config.Config, log *slog.Logger) (*Client, error) {
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: !cfg.Zabbix.VerifySSL, //nolint:gosec // G402: user-configurable option, defaults to VerifySSL=true
@@ -52,7 +53,7 @@ func NewClient(cfg *config.Config, log *zap.Logger) (*Client, error) {
 		return nil, fmt.Errorf("failed to get API version: %w", err)
 	}
 	c.apiVersion = ver
-	c.log.Debug("Detected Zabbix API version", zap.String("version", ver))
+	c.log.Debug("Detected Zabbix API version", slog.String("version", ver))
 
 	// Authenticate
 	if err := c.authenticate(); err != nil {
@@ -110,7 +111,7 @@ func (c *Client) callWithContext(ctx context.Context, method string, params inte
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	c.log.Debug("Calling Zabbix API", zap.String("method", method), zap.Int64("id", reqID))
+	c.log.Debug("Calling Zabbix API", slog.String("method", method), slog.Int64("id", reqID))
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.cfg.ZabbixAPIURL(), bytes.NewReader(body))
 	if err != nil {

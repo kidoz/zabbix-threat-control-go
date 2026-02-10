@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"os"
 
+	"log/slog"
+
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 
 	"github.com/kidoz/zabbix-threat-control-go/internal/fixer"
 )
@@ -79,8 +80,8 @@ Always review the remediation plan before executing.`,
 		}
 
 		log.Info("Fix plan created",
-			zap.Int("hosts", len(plan.Hosts)),
-			zap.Int("packages", len(plan.Packages)),
+			slog.Int("hosts", len(plan.Hosts)),
+			slog.Int("packages", len(plan.Packages)),
 		)
 
 		if fixDryRun {
@@ -100,8 +101,8 @@ Always review the remediation plan before executing.`,
 		}
 
 		log.Info("Fix operation completed",
-			zap.Int("successful", results.Successful),
-			zap.Int("failed", results.Failed),
+			slog.Int("successful", results.Successful),
+			slog.Int("failed", results.Failed),
 		)
 
 		return nil

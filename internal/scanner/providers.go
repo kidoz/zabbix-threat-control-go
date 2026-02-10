@@ -5,10 +5,11 @@ import (
 	"net/http"
 	"time"
 
+	"log/slog"
+
 	vulners "github.com/kidoz/go-vulners"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.uber.org/fx"
-	"go.uber.org/zap"
 
 	"github.com/kidoz/zabbix-threat-control-go/internal/config"
 	"github.com/kidoz/zabbix-threat-control-go/internal/zabbix"
@@ -54,7 +55,7 @@ func ProvideVulnersClient(cfg *config.Config) (*vulners.Client, error) {
 // ProvideScanner assembles a Scanner from its injected dependencies.
 func ProvideScanner(
 	cfg *config.Config,
-	log *zap.Logger,
+	log *slog.Logger,
 	zabbixClient *zabbix.Client,
 	vulnersClient *vulners.Client,
 	sender *zabbix.Sender,

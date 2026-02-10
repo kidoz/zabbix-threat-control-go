@@ -1,8 +1,9 @@
 package fixer
 
 import (
+	"log/slog"
+
 	"go.uber.org/fx"
-	"go.uber.org/zap"
 
 	"github.com/kidoz/zabbix-threat-control-go/internal/config"
 	"github.com/kidoz/zabbix-threat-control-go/internal/zabbix"
@@ -17,7 +18,7 @@ var Module = fx.Module("fixer",
 // ProvideFixer assembles a Fixer from its injected dependencies.
 func ProvideFixer(
 	cfg *config.Config,
-	log *zap.Logger,
+	log *slog.Logger,
 	zabbixClient *zabbix.Client,
 	executor *Executor,
 ) *Fixer {

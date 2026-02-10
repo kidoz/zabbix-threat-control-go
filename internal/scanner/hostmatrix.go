@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.uber.org/zap"
+	"log/slog"
 
 	"github.com/kidoz/zabbix-threat-control-go/internal/config"
 	"github.com/kidoz/zabbix-threat-control-go/internal/telemetry"
@@ -23,12 +23,12 @@ type HostData struct {
 // HostMatrix fetches and organizes host data from Zabbix
 type HostMatrix struct {
 	cfg    *config.Config
-	log    *zap.Logger
+	log    *slog.Logger
 	client *zabbix.Client
 }
 
 // NewHostMatrix creates a new host matrix
-func NewHostMatrix(cfg *config.Config, log *zap.Logger, client *zabbix.Client) *HostMatrix {
+func NewHostMatrix(cfg *config.Config, log *slog.Logger, client *zabbix.Client) *HostMatrix {
 	return &HostMatrix{
 		cfg:    cfg,
 		log:    log,
@@ -47,7 +47,7 @@ func (hm *HostMatrix) FetchHosts(ctx context.Context, opts ScanOptions) ([]HostD
 		return nil, fmt.Errorf("failed to get hosts: %w", err)
 	}
 
-	hm.log.Info("Found hosts with OS-Report template", zap.Int("count", len(hosts)))
+	hm.log.Info("Found hosts with OS-Report template", slog.Int("count", len(hosts)))
 
 	// Filter by specific host IDs if provided
 	if len(opts.HostIDs) > 0 {
@@ -63,13 +63,13 @@ func (hm *HostMatrix) FetchHosts(ctx context.Context, opts ScanOptions) ([]HostD
 			}
 		}
 		hosts = filtered
-		hm.log.Info("Filtered to specific hosts", zap.Int("count", len(hosts)))
+		hm.log.Info("Filtered to specific hosts", slog.Int("count", len(hosts)))
 	}
 
 	// Apply limit
 	if opts.Limit > 0 && len(hosts) > opts.Limit {
 		hosts = hosts[:opts.Limit]
-		hm.log.Info("Applied host limit", zap.Int("limit", opts.Limit))
+		hm.log.Info("Applied host limit", slog.Int("limit", opts.Limit))
 	}
 
 	// Fetch data for each host
@@ -77,7 +77,7 @@ func (hm *HostMatrix) FetchHosts(ctx context.Context, opts ScanOptions) ([]HostD
 	for _, host := range hosts {
 		data, err := hm.fetchHostData(ctx, &host)
 		if err != nil {
-			hm.log.Warn("Failed to fetch host data", zap.Error(err), zap.String("host", host.Name))
+			hm.log.Warn("Failed to fetch host data", slog.Any("error", err), slog.String("host", host.Name))
 			continue
 		}
 
@@ -91,7 +91,7 @@ func (hm *HostMatrix) FetchHosts(ctx context.Context, opts ScanOptions) ([]HostD
 
 // fetchHostData fetches OS and package data for a single host
 func (hm *HostMatrix) fetchHostData(ctx context.Context, host *zabbix.Host) (*HostData, error) {
-	hm.log.Debug("Fetching host data", zap.String("host", host.Name))
+	hm.log.Debug("Fetching host data", slog.String("host", host.Name))
 
 	// Get OS name item
 	osItems, err := hm.client.GetHostItemsCtx(ctx, host.HostID, "system.sw.os")
@@ -108,7 +108,7 @@ func (hm *HostMatrix) fetchHostData(ctx context.Context, host *zabbix.Host) (*Ho
 	}
 
 	if osName == "" {
-		hm.log.Debug("No OS information available", zap.String("host", host.Name))
+		hm.log.Debug("No OS information available", slog.String("host", host.Name))
 		return nil, nil
 	}
 
@@ -127,7 +127,7 @@ func (hm *HostMatrix) fetchHostData(ctx context.Context, host *zabbix.Host) (*Ho
 	}
 
 	if len(packages) == 0 {
-		hm.log.Debug("No package information available", zap.String("host", host.Name))
+		hm.log.Debug("No package information available", slog.String("host", host.Name))
 		return nil, nil
 	}
 
@@ -137,15 +137,15 @@ func (hm *HostMatrix) fetchHostData(ctx context.Context, host *zabbix.Host) (*Ho
 
 	// Host data validation (matching Python behavior)
 	if reason := validateHostData(osVersion, packages); reason != "" {
-		hm.log.Debug("Excluded host", zap.String("host", host.Name), zap.String("reason", reason))
+		hm.log.Debug("Excluded host", slog.String("host", host.Name), slog.String("reason", reason))
 		return nil, nil
 	}
 
 	hm.log.Debug("Fetched host data",
-		zap.String("host", host.Name),
-		zap.String("os", osName),
-		zap.String("version", osVersion),
-		zap.Int("packages", len(packages)),
+		slog.String("host", host.Name),
+		slog.String("os", osName),
+		slog.String("version", osVersion),
+		slog.Int("packages", len(packages)),
 	)
 
 	return &HostData{

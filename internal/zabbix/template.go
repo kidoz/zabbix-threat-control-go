@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"go.uber.org/zap"
+	"log/slog"
 )
 
 // EnsureOSReportTemplate creates or updates the OS-Report template
@@ -144,7 +144,7 @@ func (c *Client) updateOSReportItems(ctx context.Context, templateID string) err
 	// Create missing items
 	for key, exists := range requiredKeys {
 		if !exists {
-			c.log.Info("Creating missing template item", zap.String("key", key))
+			c.log.Info("Creating missing template item", slog.String("key", key))
 			// Create the missing item
 			itemDef := map[string]interface{}{
 				"hostid":     templateID,

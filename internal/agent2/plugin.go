@@ -8,7 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
+	"io"
+	"log/slog"
+
 	"golang.zabbix.com/sdk/plugin"
 
 	"github.com/kidoz/zabbix-threat-control-go/internal/config"
@@ -179,7 +181,7 @@ func (p *ZTCPlugin) runScan(ctx context.Context) {
 
 	// Create a nop logger for the scanner internals.
 	// Plugin logging goes through p.Base (SDK logger).
-	s, err := scanner.New(p.cfg, zap.NewNop())
+	s, err := scanner.New(p.cfg, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		p.Errf("failed to create scanner: %s", err)
 		return

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"go.uber.org/zap"
+	"log/slog"
 
 	"github.com/kidoz/zabbix-threat-control-go/internal/config"
 	"github.com/kidoz/zabbix-threat-control-go/internal/zabbix"
@@ -16,13 +16,13 @@ import (
 // Fixer orchestrates vulnerability remediation
 type Fixer struct {
 	cfg          *config.Config
-	log          *zap.Logger
+	log          *slog.Logger
 	zabbixClient *zabbix.Client
 	executor     *Executor
 }
 
 // New creates a new fixer
-func New(cfg *config.Config, log *zap.Logger) (*Fixer, error) {
+func New(cfg *config.Config, log *slog.Logger) (*Fixer, error) {
 	zabbixClient, err := zabbix.NewClient(cfg, log)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Zabbix client: %w", err)
@@ -56,7 +56,7 @@ func (f *Fixer) Plan(opts FixOptions) (*FixPlan, error) {
 			return nil, fmt.Errorf("failed to resolve host name %q: %w", opts.HostName, err)
 		}
 		opts.HostID = host.HostID
-		f.log.Info("Resolved host name to ID", zap.String("host_name", opts.HostName), zap.String("host_id", opts.HostID))
+		f.log.Info("Resolved host name to ID", slog.String("host_name", opts.HostName), slog.String("host_id", opts.HostID))
 	}
 
 	// If a specific host is requested
@@ -91,7 +91,7 @@ func (f *Fixer) planForHost(ctx context.Context, hostID string) (*HostFixPlan, e
 
 	if len(packages) == 0 {
 		f.log.Warn("No per-package vulnerability data found; fix will perform a full system update",
-			zap.String("host", host.Name))
+			slog.String("host", host.Name))
 	}
 
 	// Get host address and agent port
@@ -120,7 +120,7 @@ func (f *Fixer) planForHost(ctx context.Context, hostID string) (*HostFixPlan, e
 // It queries the bulletins LLD data to identify which hosts and packages are
 // affected by the specific bulletin, rather than upgrading everything.
 func (f *Fixer) planForBulletin(ctx context.Context, bulletinID string) (*FixPlan, error) {
-	f.log.Info("Creating fix plan for bulletin", zap.String("bulletin", bulletinID))
+	f.log.Info("Creating fix plan for bulletin", slog.String("bulletin", bulletinID))
 
 	plan := &FixPlan{}
 
@@ -138,7 +138,7 @@ func (f *Fixer) planForBulletin(ctx context.Context, bulletinID string) (*FixPla
 	for _, hostID := range affectedHostIDs {
 		host, err := f.zabbixClient.GetHostByIDCtx(ctx, hostID)
 		if err != nil {
-			f.log.Warn("Failed to get host, skipping", zap.Error(err), zap.String("host", hostID))
+			f.log.Warn("Failed to get host, skipping", slog.Any("error", err), slog.String("host", hostID))
 			continue
 		}
 
@@ -270,10 +270,10 @@ func (f *Fixer) executeOnHost(ctx context.Context, plan *HostFixPlan, useSSH boo
 	}
 
 	f.log.Info("Executing fix command",
-		zap.String("host", plan.Name),
-		zap.String("ip", plan.IP),
-		zap.String("command", plan.Command),
-		zap.Bool("ssh", useSSH),
+		slog.String("host", plan.Name),
+		slog.String("ip", plan.IP),
+		slog.String("command", plan.Command),
+		slog.Bool("ssh", useSSH),
 	)
 
 	var output string
@@ -291,11 +291,11 @@ func (f *Fixer) executeOnHost(ctx context.Context, plan *HostFixPlan, useSSH boo
 	if err != nil {
 		result.Success = false
 		result.Error = err.Error()
-		f.log.Error("Fix execution failed", zap.Error(err), zap.String("host", plan.Name))
+		f.log.Error("Fix execution failed", slog.Any("error", err), slog.String("host", plan.Name))
 	} else {
 		result.Success = true
 		result.Output = output
-		f.log.Info("Fix executed successfully", zap.String("host", plan.Name))
+		f.log.Info("Fix executed successfully", slog.String("host", plan.Name))
 	}
 
 	return result
@@ -309,17 +309,17 @@ func (f *Fixer) executeOnHost(ctx context.Context, plan *HostFixPlan, useSSH boo
 func (f *Fixer) getVulnerablePackages(ctx context.Context, hostID string) []string {
 	lldJSON, err := f.zabbixClient.GetItemValueCtx(ctx, f.cfg.Naming.PackagesHost, "vulners.packages_lld")
 	if err != nil {
-		f.log.Debug("Failed to get packages LLD data", zap.Error(err), zap.String("host", hostID))
+		f.log.Debug("Failed to get packages LLD data", slog.Any("error", err), slog.String("host", hostID))
 		return nil
 	}
 	if lldJSON == "" {
-		f.log.Debug("No packages LLD data found; run 'ztc scan' first", zap.String("host", hostID))
+		f.log.Debug("No packages LLD data found; run 'ztc scan' first", slog.String("host", hostID))
 		return nil
 	}
 
 	var lldData zabbix.LLDData
 	if err := json.Unmarshal([]byte(lldJSON), &lldData); err != nil {
-		f.log.Debug("Failed to parse packages LLD data", zap.Error(err))
+		f.log.Debug("Failed to parse packages LLD data", slog.Any("error", err))
 		return nil
 	}
 

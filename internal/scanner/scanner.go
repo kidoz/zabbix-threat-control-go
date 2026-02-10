@@ -8,9 +8,10 @@ import (
 	"sync"
 	"time"
 
+	"log/slog"
+
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
-	"go.uber.org/zap"
 
 	vulners "github.com/kidoz/go-vulners"
 
@@ -22,7 +23,7 @@ import (
 // Scanner orchestrates vulnerability scanning
 type Scanner struct {
 	cfg           *config.Config
-	log           *zap.Logger
+	log           *slog.Logger
 	zabbixClient  *zabbix.Client
 	vulnersClient *vulners.Client
 	sender        *zabbix.Sender
@@ -32,7 +33,7 @@ type Scanner struct {
 }
 
 // New creates a new scanner
-func New(cfg *config.Config, log *zap.Logger) (*Scanner, error) {
+func New(cfg *config.Config, log *slog.Logger) (*Scanner, error) {
 	zabbixClient, err := zabbix.NewClient(cfg, log)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Zabbix client: %w", err)
@@ -83,7 +84,7 @@ func (s *Scanner) Scan(ctx context.Context, opts ScanOptions) (*ScanResults, err
 		return &ScanResults{}, nil
 	}
 
-	s.log.Info("Starting vulnerability scan", zap.Int("hosts", len(hosts)))
+	s.log.Info("Starting vulnerability scan", slog.Int("hosts", len(hosts)))
 
 	// Reset aggregator so repeated calls don't accumulate stale data.
 	s.aggregator.Reset()
@@ -106,7 +107,7 @@ func (s *Scanner) Scan(ctx context.Context, opts ScanOptions) (*ScanResults, err
 
 			entry, err := s.scanHost(ctx, &hd)
 			if err != nil {
-				s.log.Warn("Failed to scan host", zap.Error(err), zap.String("host", hd.Host.Name))
+				s.log.Warn("Failed to scan host", slog.Any("error", err), slog.String("host", hd.Host.Name))
 				return
 			}
 
@@ -135,10 +136,10 @@ func (s *Scanner) scanHost(ctx context.Context, hostData *HostData) (*HostEntry,
 	)
 
 	s.log.Debug("Scanning host",
-		zap.String("host", hostData.Host.Name),
-		zap.String("os", hostData.OSName),
-		zap.String("version", hostData.OSVersion),
-		zap.Int("packages", len(hostData.Packages)),
+		slog.String("host", hostData.Host.Name),
+		slog.String("os", hostData.OSName),
+		slog.String("version", hostData.OSVersion),
+		slog.Int("packages", len(hostData.Packages)),
 	)
 
 	// Call Vulners API
@@ -172,10 +173,10 @@ func (s *Scanner) scanHost(ctx context.Context, hostData *HostData) (*HostEntry,
 	span.SetAttributes(attribute.Float64("cvss.score", entry.Score))
 
 	s.log.Info("Host scanned",
-		zap.String("host", hostData.Host.Name),
-		zap.Float64("score", entry.Score),
-		zap.Int("packages", len(vulnPackages)),
-		zap.Int("bulletins", len(bulletins)),
+		slog.String("host", hostData.Host.Name),
+		slog.Float64("score", entry.Score),
+		slog.Int("packages", len(vulnPackages)),
+		slog.Int("bulletins", len(bulletins)),
 	)
 
 	return entry, nil
@@ -214,7 +215,7 @@ func (s *Scanner) PushResults(ctx context.Context, results *ScanResults) error {
 
 	// Wait for Zabbix to process LLD and create discovered items
 	if s.cfg.Scan.LLDDelay > 0 {
-		s.log.Info("Waiting for Zabbix to process LLD rules...", zap.Int("seconds", s.cfg.Scan.LLDDelay))
+		s.log.Info("Waiting for Zabbix to process LLD rules...", slog.Int("seconds", s.cfg.Scan.LLDDelay))
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -250,9 +251,9 @@ func (s *Scanner) PushResults(ctx context.Context, results *ScanResults) error {
 	}
 
 	s.log.Info("Results pushed to Zabbix",
-		zap.Int("hosts", len(results.Hosts)),
-		zap.Int("packages", len(results.Packages)),
-		zap.Int("bulletins", len(results.Bulletins)),
+		slog.Int("hosts", len(results.Hosts)),
+		slog.Int("packages", len(results.Packages)),
+		slog.Int("bulletins", len(results.Bulletins)),
 	)
 
 	return nil

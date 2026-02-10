@@ -6,8 +6,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	"log/slog"
+
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 
 	"github.com/kidoz/zabbix-threat-control-go/internal/scanner"
 )
@@ -61,8 +62,8 @@ This command:
 		}
 
 		log.Info("Scan completed",
-			zap.Int("hosts_scanned", results.HostsScanned),
-			zap.Int("vulnerabilities_found", results.VulnerablePackages),
+			slog.Int("hosts_scanned", results.HostsScanned),
+			slog.Int("vulnerabilities_found", results.VulnerablePackages),
 		)
 
 		if !scanNoPush && !scanDryRun {

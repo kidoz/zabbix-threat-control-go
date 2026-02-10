@@ -16,7 +16,6 @@ require (
 	go.opentelemetry.io/otel/sdk v1.40.0
 	go.opentelemetry.io/otel/trace v1.40.0
 	go.uber.org/fx v1.24.0
-	go.uber.org/zap v1.27.1
 	golang.zabbix.com/sdk v1.2.2-0.20260203100651-f926e7a00186
 	gopkg.in/ini.v1 v1.67.1
 )
@@ -41,6 +40,7 @@ require (
 	go.opentelemetry.io/proto/otlp v1.9.0 // indirect
 	go.uber.org/dig v1.19.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
+	go.uber.org/zap v1.27.1 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/net v0.49.0 // indirect
 	golang.org/x/text v0.33.0 // indirect

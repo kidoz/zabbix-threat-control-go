@@ -4,13 +4,14 @@ import (
 	"strings"
 	"testing"
 
-	"go.uber.org/zap"
+	"io"
+	"log/slog"
 
 	"github.com/kidoz/zabbix-threat-control-go/internal/config"
 )
 
 func newTestExecutor() *Executor {
-	return NewExecutor(config.DefaultConfig(), zap.NewNop())
+	return NewExecutor(config.DefaultConfig(), slog.New(slog.NewTextHandler(io.Discard, nil)))
 }
 
 func TestGenerateFixCommand(t *testing.T) {

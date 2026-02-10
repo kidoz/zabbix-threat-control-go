@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"go.uber.org/zap"
+	"log/slog"
 
 	"github.com/kidoz/zabbix-threat-control-go/internal/config"
 )
@@ -16,11 +16,11 @@ import (
 // Executor executes fix commands on remote hosts
 type Executor struct {
 	cfg *config.Config
-	log *zap.Logger
+	log *slog.Logger
 }
 
 // NewExecutor creates a new executor
-func NewExecutor(cfg *config.Config, log *zap.Logger) *Executor {
+func NewExecutor(cfg *config.Config, log *slog.Logger) *Executor {
 	return &Executor{
 		cfg: cfg,
 		log: log,
@@ -39,9 +39,9 @@ func (e *Executor) ExecuteViaAgent(ctx context.Context, hostIP, port, command st
 	}
 
 	e.log.Debug("Executing command via Zabbix agent",
-		zap.String("host", hostIP),
-		zap.String("port", port),
-		zap.String("command", command),
+		slog.String("host", hostIP),
+		slog.String("port", port),
+		slog.String("command", command),
 	)
 
 	// Use zabbix_get to execute the command
@@ -77,9 +77,9 @@ func (e *Executor) ExecuteViaSSH(ctx context.Context, hostIP, user, command stri
 	}
 
 	e.log.Debug("Executing command via SSH",
-		zap.String("host", hostIP),
-		zap.String("user", user),
-		zap.String("command", command),
+		slog.String("host", hostIP),
+		slog.String("user", user),
+		slog.String("command", command),
 	)
 
 	cmd := exec.CommandContext(ctx, //nolint:gosec // G204: hostIP and user are validated by sanitize.go before reaching here
@@ -104,7 +104,7 @@ func (e *Executor) ExecuteViaSSH(ctx context.Context, hostIP, user, command stri
 // GenerateFixCommand generates the package fix command for a host
 func (e *Executor) GenerateFixCommand(osName string, packages []string) string {
 	if err := SanitizePackages(packages); err != nil {
-		e.log.Warn("Invalid package name detected, falling back to full system update", zap.Error(err))
+		e.log.Warn("Invalid package name detected, falling back to full system update", slog.Any("error", err))
 		packages = nil
 	}
 
@@ -167,7 +167,7 @@ func (e *Executor) ExecuteWithRetry(ctx context.Context, fn func() (string, erro
 		lastErr = err
 
 		if i < maxRetries {
-			e.log.Warn("Command failed, retrying...", zap.Error(err), zap.Int("attempt", i+1))
+			e.log.Warn("Command failed, retrying...", slog.Any("error", err), slog.Int("attempt", i+1))
 			select {
 			case <-ctx.Done():
 				return "", ctx.Err()

@@ -3,11 +3,10 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 
 	"github.com/kidoz/zabbix-threat-control-go/internal/config"
 	"github.com/kidoz/zabbix-threat-control-go/internal/telemetry"
@@ -17,7 +16,7 @@ var (
 	cfgFile      string
 	verbose      bool
 	cfg          *config.Config
-	log          *zap.Logger
+	log          *slog.Logger
 	otelShutdown func(context.Context) error
 )
 
@@ -55,9 +54,6 @@ centralized monitoring and alerting.`,
 		return nil
 	},
 	PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
-		if log != nil {
-			_ = log.Sync()
-		}
 		if otelShutdown != nil {
 			return otelShutdown(context.Background())
 		}
@@ -80,30 +76,14 @@ func GetConfig() *config.Config {
 	return cfg
 }
 
-func GetLogger() *zap.Logger {
+func GetLogger() *slog.Logger {
 	return log
 }
 
-func newLogger(verbose bool) *zap.Logger {
-	level := zap.InfoLevel
+func newLogger(verbose bool) *slog.Logger {
+	level := slog.LevelInfo
 	if verbose {
-		level = zap.DebugLevel
+		level = slog.LevelDebug
 	}
-	cfg := zap.Config{
-		Level:            zap.NewAtomicLevelAt(level),
-		Encoding:         "console",
-		OutputPaths:      []string{"stdout"},
-		ErrorOutputPaths: []string{"stderr"},
-		EncoderConfig: zapcore.EncoderConfig{
-			TimeKey:        "T",
-			LevelKey:       "L",
-			MessageKey:     "M",
-			LineEnding:     zapcore.DefaultLineEnding,
-			EncodeLevel:    zapcore.CapitalLevelEncoder,
-			EncodeTime:     zapcore.ISO8601TimeEncoder,
-			EncodeDuration: zapcore.StringDurationEncoder,
-		},
-	}
-	logger, _ := cfg.Build()
-	return logger
+	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
 }
